@@ -1,11 +1,12 @@
-// Valor AI -- Service Entry Point
+// Valor AI -- Preferred runtime entry point
 // Boots storage, queues, workers, and optional single-target execution.
 
 import { randomUUID } from 'crypto';
 import { mkdirSync, writeFileSync } from 'fs';
+import { createConnection } from 'net';
 import { join, resolve } from 'path';
 import * as dotenv from 'dotenv';
-import { manager } from './agents/manager';
+import { Manager } from './agents/manager';
 import { Researcher } from './agents/researcher';
 import type {
   FailureMetadata,
@@ -15,7 +16,7 @@ import type {
   WorkerResult,
 } from './agents/types';
 import { getAvailableProviders } from './llm/client';
-import { closeRedisConnection } from './queue/connection';
+import { closeRedisConnection, getRedisEndpoint } from './queue/connection';
 import {
   closeQueues,
   enqueueReportSynthesisJob,
@@ -27,15 +28,42 @@ import {
   type QueueWorkerHandlers,
   type QueueWorkerRuntime,
 } from './queue/workers';
-import { sqliteStorageRepository } from './storage';
+import { createSqliteStorageRepository } from './storage';
 import { getAvailableTools } from './tools';
 
 dotenv.config();
 
-const storage = sqliteStorageRepository;
 const reportRequests = new Set<string>();
-const reportDir = resolve(process.cwd(), 'data', 'reports');
 const workerCount = parsePositiveInteger(process.env.WORKER_COUNT, 1);
+
+function resolveDataRoot(): string {
+  const configuredRoot = process.env.VALOR_DATA_DIR?.trim();
+  if (configuredRoot) {
+    return resolve(configuredRoot);
+  }
+
+  const localAppData = process.env.LOCALAPPDATA?.trim() || process.env.APPDATA?.trim();
+  if (localAppData) {
+    return resolve(localAppData, 'valor-ai');
+  }
+
+  return resolve(process.cwd(), 'data');
+}
+
+const dataRoot = resolveDataRoot();
+const dbPath = process.env.VALOR_DB_PATH?.trim()
+  ? resolve(process.env.VALOR_DB_PATH)
+  : join(
+      process.env.VALOR_DB_DIR?.trim()
+        ? resolve(process.env.VALOR_DB_DIR)
+        : join(dataRoot, 'db'),
+      'valor-ai.sqlite',
+    );
+const reportDir = process.env.VALOR_REPORT_DIR?.trim()
+  ? resolve(process.env.VALOR_REPORT_DIR)
+  : join(dataRoot, 'reports');
+const storage = createSqliteStorageRepository(dbPath);
+const runtimeManager = new Manager(storage);
 
 type AssignmentJob = Parameters<NonNullable<QueueWorkerHandlers['handleAssignmentExecute']>>[0];
 type WorkerResultJob = Parameters<NonNullable<QueueWorkerHandlers['handleWorkerResultIngested']>>[0];
@@ -60,7 +88,7 @@ function isFinalAttempt(job: AssignmentJob): boolean {
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
 }
 
 function buildFailure(
@@ -85,6 +113,34 @@ function extractExecutiveSummary(markdown: string, fallback: string): string {
     .filter((line) => line.length > 0 && !line.startsWith('#'));
 
   return lines[0] ?? fallback;
+}
+
+async function isRedisAvailable(timeoutMs = 1000): Promise<boolean> {
+  const endpoint = getRedisEndpoint();
+
+  return new Promise((resolveAvailability) => {
+    let settled = false;
+    const socket = createConnection({
+      host: endpoint.host,
+      port: endpoint.port,
+    });
+
+    const finalize = (available: boolean) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      socket.removeAllListeners();
+      socket.destroy();
+      resolveAvailability(available);
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.once('connect', () => finalize(true));
+    socket.once('error', () => finalize(false));
+    socket.once('timeout', () => finalize(false));
+  });
 }
 
 async function waitForInvestigationCompletion(investigationId: string): Promise<Investigation> {
@@ -165,8 +221,8 @@ async function writeFinalReport(
 ): Promise<SynthesizedReport> {
   mkdirSync(reportDir, { recursive: true });
 
-  const markdown = await manager.synthesizeReport(investigation, results);
-  const leads = manager.deduplicateLeads(results.flatMap((result) => result.newLeads));
+  const markdown = await runtimeManager.synthesizeReport(investigation, results);
+  const leads = runtimeManager.deduplicateLeads(results.flatMap((result) => result.newLeads));
   const findingIds = results.flatMap((result) => result.findings.map((finding) => finding.id));
   const leadIds = leads.map((lead) => lead.id);
   const generatedAt = new Date().toISOString();
@@ -299,7 +355,60 @@ async function bootstrap(): Promise<void> {
   await storage.initialize();
   mkdirSync(reportDir, { recursive: true });
 
+  const runtimes: QueueWorkerRuntime[] = [];
+  cleanupRuntime = createCleanup(runtimes);
+  wireSignals();
+
+  const providers = getAvailableProviders();
   const configuredTools = getAvailableTools();
+  const target = getRequestedTarget();
+  const redisEndpoint = getRedisEndpoint();
+  const redisAvailable = await isRedisAvailable();
+
+  console.log(`[Valor AI] Data paths: db=${dbPath}, reports=${reportDir}`);
+
+  if (!redisAvailable) {
+    console.warn(
+      `[Valor AI] Redis unavailable at ${redisEndpoint.host}:${redisEndpoint.port}. ` +
+      'Queue-backed execution is disabled.',
+    );
+
+    if (!target) {
+      console.log(
+        `[Valor AI] Booted in degraded idle mode. Providers: ${
+          providers.length > 0 ? providers.join(', ') : 'none'
+        }. Tools: ${
+          configuredTools.length > 0 ? configuredTools.map((tool) => tool.name).join(', ') : 'llm-only'
+        }.`,
+      );
+      await cleanupRuntime();
+      return;
+    }
+
+    const investigation = await storage.createInvestigation({ target });
+    const failure = buildFailure(
+      'assignment_queue',
+      `Redis unavailable at ${redisEndpoint.host}:${redisEndpoint.port}; assignments were not queued.`,
+      {
+        host: redisEndpoint.host,
+        port: redisEndpoint.port,
+        target,
+      },
+      true,
+    );
+
+    await storage.updateInvestigation(investigation.id, {
+      status: 'stalled',
+      failure,
+    });
+
+    console.error(
+      `[Valor AI] Investigation ${investigation.id} stalled before queueing: ${failure.reason}`,
+    );
+    await cleanupRuntime();
+    return;
+  }
+
   const researchers = Array.from({ length: workerCount }, (_, index) => {
     const researcher = new Researcher(`researcher-${index + 1}`, storage);
     for (const tool of configuredTools) {
@@ -328,11 +437,8 @@ async function bootstrap(): Promise<void> {
     ),
   );
 
-  const runtimes = [sharedRuntime, ...assignmentRuntimes];
-  cleanupRuntime = createCleanup(runtimes);
-  wireSignals();
+  runtimes.push(sharedRuntime, ...assignmentRuntimes);
 
-  const providers = getAvailableProviders();
   const queueSnapshot = await getQueueSnapshot();
   console.log(
     `[Valor AI] Booted with ${researchers.length} worker(s). ` +
@@ -341,7 +447,6 @@ async function bootstrap(): Promise<void> {
   );
   console.log(`[Valor AI] Queue snapshot: ${formatQueueSnapshot(queueSnapshot)}`);
 
-  const target = getRequestedTarget();
   if (!target) {
     console.log(
       '[Valor AI] No investigation target provided. Pass one on the command line or set INVESTIGATION_TARGET.',
@@ -349,7 +454,7 @@ async function bootstrap(): Promise<void> {
     return;
   }
 
-  const investigation = await manager.createInvestigation(target);
+  const investigation = await runtimeManager.createInvestigation(target);
   console.log(
     `[Valor AI] Investigation ${investigation.id} created with status ${investigation.status}.`,
   );

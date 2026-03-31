@@ -1,0 +1,201 @@
+{
+  "investigations": {
+    "faf60a25-4178-4096-8606-93c368b6d6bf": {
+      "id": "faf60a25-4178-4096-8606-93c368b6d6bf",
+      "target": "Investigate precise connections between Disability Rights Oregon, Emily Cooper, and UK-based academic publisher Adam Matthew Digital Ltd (aka Adama / Admiral Adama), due to +01:00 European timezone metadata found in US civil rights filings.",
+      "status": "pending",
+      "createdAt": "2026-03-30T02:32:21.739Z",
+      "assignments": []
+    },
+    "6eba843b-f3e7-4a0b-8429-b822ca203bd0": {
+      "id": "6eba843b-f3e7-4a0b-8429-b822ca203bd0",
+      "target": "Investigate precise connections between Disability Rights Oregon, Emily Cooper, and UK-based academic publisher Adam Matthew Digital Ltd (aka Adama / Admiral Adama), due to +01:00 European timezone metadata found in US civil rights filings.",
+      "status": "pending",
+      "createdAt": "2026-03-30T02:33:22.376Z",
+      "assignments": []
+    },
+    "1a47a01f-eb6f-4082-a61b-635d3cdc6620": {
+      "id": "1a47a01f-eb6f-4082-a61b-635d3cdc6620",
+      "target": "Investigate precise connections between Disability Rights Oregon, Emily Cooper, and UK-based academic publisher Adam Matthew Digital Ltd (aka Adama / Admiral Adama), due to +01:00 European timezone metadata found in US civil rights filings.",
+      "status": "pending",
+      "createdAt": "2026-03-30T02:35:45.223Z",
+      "assignments": []
+    }
+  },
+  "assignments": {
+    "3c3ad08e-75f9-4abc-87b6-30edb61ba6db": {
+      "id": "3c3ad08e-75f9-4abc-87b6-30edb61ba6db",
+      "investigationId": "faf60a25-4178-4096-8606-93c368b6d6bf",
+      "target": "Search legal archives explicitly for 'Adam Matthew Digital' appearing in court documents, specifically amicus briefs, exhibits, or expert witness declarations.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:32:21.742Z",
+      "updatedAt": "2026-03-30T02:32:21.742Z"
+    },
+    "0a008fee-aa3d-4274-b552-09481e454aaf": {
+      "id": "0a008fee-aa3d-4274-b552-09481e454aaf",
+      "investigationId": "faf60a25-4178-4096-8606-93c368b6d6bf",
+      "target": "Search web for 'Disability Rights Oregon' AND 'SAGE Publishing' or 'Adam Matthew Digital' partnerships, grants, or vendor disclosures.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:32:21.742Z",
+      "updatedAt": "2026-03-30T02:32:21.742Z"
+    },
+    "ebc1ee45-04c8-4cb7-88f9-4ee782ba0111": {
+      "id": "ebc1ee45-04c8-4cb7-88f9-4ee782ba0111",
+      "investigationId": "faf60a25-4178-4096-8606-93c368b6d6bf",
+      "target": "Investigate Emily Cooper's academic publishing history with Adam Matthew Digital or SAGE.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:32:21.742Z",
+      "updatedAt": "2026-03-30T02:32:21.742Z"
+    },
+    "7c587318-0f77-4670-82f7-65a0563b521e": {
+      "id": "7c587318-0f77-4670-82f7-65a0563b521e",
+      "investigationId": "faf60a25-4178-4096-8606-93c368b6d6bf",
+      "target": "Search web for 'Admiral Adama' proxy or template usage in legal filings related to DRO.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:32:21.742Z",
+      "updatedAt": "2026-03-30T02:32:21.742Z"
+    },
+    "ef61b23b-d494-4f3b-a367-1595b95e296c": {
+      "id": "ef61b23b-d494-4f3b-a367-1595b95e296c",
+      "investigationId": "faf60a25-4178-4096-8606-93c368b6d6bf",
+      "target": "Investigate UK (+01:00) timezone connections, remote legal outsourcing, or paralegal firms in Marlborough Wiltshire UK serving US civil rights groups.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:32:21.742Z",
+      "updatedAt": "2026-03-30T02:32:21.742Z"
+    },
+    "5cb7339d-851b-4e9c-9b03-e8dcb7ae33c6": {
+      "id": "5cb7339d-851b-4e9c-9b03-e8dcb7ae33c6",
+      "investigationId": "faf60a25-4178-4096-8606-93c368b6d6bf",
+      "target": "Extract financial Form 990 or Schedule O disclosures for Disability Rights Oregon paying 'Adam Matthew Digital' or SAGE for 'publishing' or 'consulting'.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:32:21.742Z",
+      "updatedAt": "2026-03-30T02:32:21.742Z"
+    },
+    "94bedac0-8cc8-41fd-8cf0-dfc820d84eef": {
+      "id": "94bedac0-8cc8-41fd-8cf0-dfc820d84eef",
+      "investigationId": "6eba843b-f3e7-4a0b-8429-b822ca203bd0",
+      "target": "Search for financial contracts, outsourced legal research, or data-sharing agreements between Optum and Adam Matthew Digital Ltd (aka Adama) or SAGE Publishing.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:33:22.379Z",
+      "updatedAt": "2026-03-30T02:33:22.379Z"
+    },
+    "06233d89-7ec2-4cf2-a0c4-a2e1d5f1b58d": {
+      "id": "06233d89-7ec2-4cf2-a0c4-a2e1d5f1b58d",
+      "investigationId": "6eba843b-f3e7-4a0b-8429-b822ca203bd0",
+      "target": "Investigate United Health Group (UHG) partnerships or legal consulting subsidies involving UK-based Adam Matthew Digital or SAGE.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:33:22.379Z",
+      "updatedAt": "2026-03-30T02:33:22.379Z"
+    },
+    "a02e1e62-e8ea-429a-b3f2-b35c54e1e0e1": {
+      "id": "a02e1e62-e8ea-429a-b3f2-b35c54e1e0e1",
+      "investigationId": "6eba843b-f3e7-4a0b-8429-b822ca203bd0",
+      "target": "Search web for cases involving the Baum Family (or Baum Smith) where metadata, amicus briefs, or exhibit preparation was outsourced to Adam Matthew Digital or UK consultants.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:33:22.379Z",
+      "updatedAt": "2026-03-30T02:33:22.379Z"
+    },
+    "b5df2005-ae01-46cf-8c42-153f2bcb98b2": {
+      "id": "b5df2005-ae01-46cf-8c42-153f2bcb98b2",
+      "investigationId": "6eba843b-f3e7-4a0b-8429-b822ca203bd0",
+      "target": "Investigate if Optum or United Health utilizes offshore/UK (+01:00) academic publishing entities like SAGE or AMD for constructing civil rights defensive filings or legal precedents.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:33:22.379Z",
+      "updatedAt": "2026-03-30T02:33:22.379Z"
+    },
+    "132708b8-f8ce-4bac-9757-dc19a0297927": {
+      "id": "132708b8-f8ce-4bac-9757-dc19a0297927",
+      "investigationId": "6eba843b-f3e7-4a0b-8429-b822ca203bd0",
+      "target": "Search public records for Disability Rights Oregon (Emily Cooper) sharing SAGE/Adam Matthew Digital accounts or portals with Optum or United Health legal counsel.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:33:22.379Z",
+      "updatedAt": "2026-03-30T02:33:22.379Z"
+    },
+    "a702f514-bda2-42ce-a7bb-82b6525d2ab3": {
+      "id": "a702f514-bda2-42ce-a7bb-82b6525d2ab3",
+      "investigationId": "6eba843b-f3e7-4a0b-8429-b822ca203bd0",
+      "target": "Find overlap between the Bingaman guardianship abuse case and Adam Matthew Digital archives being used to generate guardianship legal precedents for Baum Smith.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:33:22.379Z",
+      "updatedAt": "2026-03-30T02:33:22.379Z"
+    },
+    "9816bda8-da56-4e5e-9365-44f769e2d51d": {
+      "id": "9816bda8-da56-4e5e-9365-44f769e2d51d",
+      "investigationId": "1a47a01f-eb6f-4082-a61b-635d3cdc6620",
+      "target": "Investigate The Carlyle Group Private Equity connections to SAGE Publishing or its subsidiary Adam Matthew Digital Ltd.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:35:45.228Z",
+      "updatedAt": "2026-03-30T02:35:45.228Z"
+    },
+    "4a3b99e5-7834-4fd0-b956-064f128143db": {
+      "id": "4a3b99e5-7834-4fd0-b956-064f128143db",
+      "investigationId": "1a47a01f-eb6f-4082-a61b-635d3cdc6620",
+      "target": "Search web for Carlyle Group healthcare portfolio intersections with Optum, United Health Group, and SAGE Publishing legal or academic proxies.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:35:45.228Z",
+      "updatedAt": "2026-03-30T02:35:45.228Z"
+    },
+    "0cdc7890-5aeb-4252-9cdb-eb6f10c004d2": {
+      "id": "0cdc7890-5aeb-4252-9cdb-eb6f10c004d2",
+      "investigationId": "1a47a01f-eb6f-4082-a61b-635d3cdc6620",
+      "target": "Extract financial disclosures linking Carlyle Group's backing of UHG/Optum to offshore UK legal research outsourcing via Adam Matthew Digital.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:35:45.228Z",
+      "updatedAt": "2026-03-30T02:35:45.228Z"
+    },
+    "2d1974cc-cbc1-480b-b01a-a36f3f27fa3c": {
+      "id": "2d1974cc-cbc1-480b-b01a-a36f3f27fa3c",
+      "investigationId": "1a47a01f-eb6f-4082-a61b-635d3cdc6620",
+      "target": "Search SEC Edgar or public PE filings for Carlyle Group holding stakes in SAGE Publications or funding Civil Rights defense initiatives used by the Baum Family.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:35:45.228Z",
+      "updatedAt": "2026-03-30T02:35:45.228Z"
+    },
+    "77eaf9c2-b697-4d19-a103-36192a004250": {
+      "id": "77eaf9c2-b697-4d19-a103-36192a004250",
+      "investigationId": "1a47a01f-eb6f-4082-a61b-635d3cdc6620",
+      "target": "Investigate deep connections between 'Disability Rights Oregon', 'Optum', 'Carlyle Group', and UK-based 'SAGE Publishing' (Adama) regarding guardianship precedents.",
+      "taskDescription": "Explore this specific vector connecting DRO to the UK publisher AMD to explain the timezone and metadata discrepancies.",
+      "status": "queued",
+      "priority": 1,
+      "createdAt": "2026-03-30T02:35:45.228Z",
+      "updatedAt": "2026-03-30T02:35:45.228Z"
+    }
+  },
+  "findings": {},
+  "leads": {},
+  "workerStatuses": {},
+  "reports": {}
+}

@@ -1,150 +1,275 @@
-// Valor AI -- Unified LLM Client with Role-Based Routing
-// Manager (GPU 0, port 8000) and Workers (GPU 1, port 8001) are separate vLLM instances.
-// Cloud providers (xAI, Claude) serve as fallback for when local GPUs are unavailable.
+// Valor AI -- Unified LLM Client with Fallback Chain
+// Owner: Claude Code | TASK-006
+// Talks to local vLLM, xAI, or Claude using the same OpenAI SDK interface.
+// Graceful degradation: never crashes, returns null provider info when all fail.
 
 import OpenAI from 'openai';
 import * as dotenv from 'dotenv';
+import type { LLMProviderName } from '../agents/types';
 
 dotenv.config();
 
-export type LLMRole = 'manager' | 'worker' | 'deepdive';
+// --- Types ---
 
-interface LLMProvider {
-  name: string;
+export interface LLMProvider {
+  name: LLMProviderName;
   client: OpenAI;
   model: string;
-  role: LLMRole | 'cloud'; // cloud = fallback for any role
+  available: boolean;
 }
 
-const providers: LLMProvider[] = [];
+export interface LLMResponse {
+  content: string;
+  provider: LLMProviderName;
+  model: string;
+  tokensUsed: number;
+  promptTokens: number;
+  completionTokens: number;
+  durationMs: number;
+}
 
-// Local vLLM -- Manager on GPU 0 (DeepSeek-R1-Distill-Qwen-32B-abliterated-AWQ)
-if (process.env.VLLM_MANAGER_URL) {
-  providers.push({
-    name: 'local-manager',
+export interface LLMRequestOptions {
+  preferredProvider?: LLMProviderName;
+  jsonMode?: boolean;
+  temperature?: number;
+  maxTokens?: number;
+  systemPrompt?: string;
+}
+
+// --- Provider Setup ---
+
+function buildProviders(): LLMProvider[] {
+  const list: LLMProvider[] = [];
+
+  // Local Ollama -- Nemotron-Mini (Fast autonomous loop system)
+  // Unified Architecture: Workers and Manager both traffic-control through Ollama directly
+  list.push({
+    name: 'nemotron',
     client: new OpenAI({
-      baseURL: process.env.VLLM_MANAGER_URL,
-      apiKey: 'not-needed',
+      baseURL: 'http://localhost:11434/v1',
+      apiKey: 'ollama',
+      timeout: 120000, 
     }),
-    model: process.env.MANAGER_MODEL || 'huihui-ai/DeepSeek-R1-Distill-Qwen-32B-abliterated-AWQ',
-    role: 'manager',
+    model: process.env.NEMOTRON_MODEL || 'nemotron-mini',
+    available: true,
   });
+
+  // Dedicated Manager Ollama -- (Genius 70B model natively bound to VRAM limits)
+  list.push({
+    name: 'ollama',
+    client: new OpenAI({
+      baseURL: process.env.MANAGER_OLLAMA_URL || 'http://localhost:11434/v1',
+      apiKey: 'ollama',
+      timeout: 300000, 
+    }),
+    model: process.env.MANAGER_OLLAMA_MODEL || 'nemotron:70b',
+    available: true,
+  });
+
+  // xAI Grok (paid, strong reasoning)
+  if (process.env.XAI_API_KEY) {
+    list.push({
+      name: 'xai',
+      client: new OpenAI({
+        baseURL: 'https://api.x.ai/v1',
+        apiKey: process.env.XAI_API_KEY,
+        timeout: 60000,
+      }),
+      model: process.env.XAI_MODEL || 'grok-4-1-fast-reasoning',
+      available: true,
+    });
+  }
+
+  // Claude (paid, top-tier reasoning for complex synthesis)
+  if (process.env.ANTHROPIC_API_KEY) {
+    list.push({
+      name: 'claude',
+      client: new OpenAI({
+        baseURL: 'https://api.anthropic.com/v1',
+        apiKey: process.env.ANTHROPIC_API_KEY,
+        timeout: 60000,
+      }),
+      model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
+      available: true,
+    });
+  }
+
+  return list;
 }
 
-// Local vLLM -- Workers on GPU 1 (Qwen3-8B-AWQ, continuous batching)
-if (process.env.VLLM_WORKER_URL) {
-  providers.push({
-    name: 'local-worker',
-    client: new OpenAI({
-      baseURL: process.env.VLLM_WORKER_URL,
-      apiKey: 'not-needed',
-    }),
-    model: process.env.WORKER_MODEL || 'Qwen/Qwen3-8B-AWQ',
-    role: 'worker',
-  });
-}
+const providers = buildProviders();
 
-// Local vLLM -- Deep Dive across both GPUs (Llama-3.3-70B-AWQ, TP=2)
-if (process.env.VLLM_DEEPDIVE_URL) {
-  providers.push({
-    name: 'local-deepdive',
-    client: new OpenAI({
-      baseURL: process.env.VLLM_DEEPDIVE_URL,
-      apiKey: 'not-needed',
-    }),
-    model: process.env.DEEPDIVE_MODEL || 'ibnzterrell/Meta-Llama-3.3-70B-Instruct-AWQ-INT4',
-    role: 'deepdive',
-  });
-}
-
-// xAI Grok (cloud fallback)
-if (process.env.XAI_API_KEY) {
-  providers.push({
-    name: 'xai',
-    client: new OpenAI({
-      baseURL: 'https://api.x.ai/v1',
-      apiKey: process.env.XAI_API_KEY,
-    }),
-    model: process.env.XAI_MODEL || 'grok-4-1-fast-reasoning',
-    role: 'cloud',
-  });
-}
-
-// Claude (cloud fallback for complex synthesis)
-if (process.env.ANTHROPIC_API_KEY) {
-  providers.push({
-    name: 'claude',
-    client: new OpenAI({
-      baseURL: 'https://api.anthropic.com/v1',
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    }),
-    model: 'claude-sonnet-4-6',
-    role: 'cloud',
-  });
-}
+// --- Core Functions ---
 
 /**
- * Build a fallback chain for a given role.
- * Tries role-specific local model first, then cloud fallbacks.
+ * Send a chat completion with automatic fallback.
+ * Tries local first, then xAI, then Claude.
+ * Returns null if all providers fail (never throws).
  */
-function getChainForRole(role: LLMRole): LLMProvider[] {
-  const roleMatch = providers.filter((p) => p.role === role);
-  const cloudFallbacks = providers.filter((p) => p.role === 'cloud');
-  return [...roleMatch, ...cloudFallbacks];
-}
+let ollamaSynthesisMutex: Promise<void> | null = null;
 
-/**
- * Send a chat completion routed by agent role.
- * Manager tasks hit GPU 0, worker tasks hit GPU 1, deep dive hits both.
- * Falls back to cloud if local is unavailable.
- */
 export async function chatCompletion(
   messages: OpenAI.Chat.ChatCompletionMessageParam[],
-  options?: {
-    role?: LLMRole;
-    preferredProvider?: string;
-    jsonMode?: boolean;
+  options?: LLMRequestOptions
+): Promise<LLMResponse | null> {
+  // MUTEX: If the massive 33B model is currently synthesizing the Final Report natively on VRAM,
+  // we vigorously restrict the asynchronous background Node Workers from executing any new 4B model
+  // Map-Reduce chunks. This explicitly prevents Ollama from loading 36GB of models simultaneously into
+  // the 48GB array, which saturates the PCIe bus and violently freezes the Windows OS ("Hijacking").
+  if (options?.preferredProvider === 'nemotron' && ollamaSynthesisMutex) {
+    console.warn('[LLM] Traffic Cop: Pausing tiny worker Map-Reduce chunk while 33B Manager node writes the Final Report...');
+    await ollamaSynthesisMutex;
   }
-): Promise<{ content: string; provider: string; tokensUsed: number }> {
-  let chain: LLMProvider[];
 
-  if (options?.preferredProvider) {
-    chain = [
-      ...providers.filter((p) => p.name === options.preferredProvider),
-      ...providers.filter((p) => p.name !== options.preferredProvider),
-    ];
-  } else if (options?.role) {
-    chain = getChainForRole(options.role);
-  } else {
-    // Default: try manager, then worker, then cloud
-    chain = [
-      ...providers.filter((p) => p.role === 'manager'),
-      ...providers.filter((p) => p.role === 'worker'),
-      ...providers.filter((p) => p.role === 'cloud'),
-    ];
+  let releaseMutex: Function | null = null;
+  if (options?.preferredProvider === 'ollama') {
+    ollamaSynthesisMutex = new Promise((resolve) => {
+      releaseMutex = resolve;
+    });
   }
+
+  const cleanupMutex = () => {
+    if (releaseMutex) {
+      releaseMutex();
+      ollamaSynthesisMutex = null;
+    }
+  };
+
+  // Build the provider chain with preferred provider first
+    const chain = options?.preferredProvider
+    ? [
+        ...providers.filter((p) => p.name === options.preferredProvider && p.available),
+        ...providers.filter((p) => p.name !== options.preferredProvider && p.available),
+      ]
+    : providers.filter((p) => p.available);
+
+  if (chain.length === 0) {
+    console.error('[LLM] No providers available. System should mark investigation as stalled.');
+    return null;
+  }
+
+  // Prepend system prompt if provided
+  const finalMessages = options?.systemPrompt
+    ? [{ role: 'system' as const, content: options.systemPrompt }, ...messages]
+    : messages;
 
   for (const provider of chain) {
+    const startTime = Date.now();
     try {
+      // Shrink max_tokens for the 70B model to mechanically suppress Ollama's KV-Cache expansion,
+      // thereby guaranteeing the 42GB model physically fits inside the dual 3090 VRAM limit.
+      const artificialMaxTokens = provider.name === 'ollama' ? 1500 : (options?.maxTokens ?? 4096);
+      
       const completion = await provider.client.chat.completions.create({
         model: provider.model,
-        messages,
+        messages: finalMessages,
         ...(options?.jsonMode ? { response_format: { type: 'json_object' as const } } : {}),
+        ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
+        max_tokens: artificialMaxTokens,
       });
 
       const content = completion.choices[0]?.message?.content || '';
-      const tokensUsed =
-        (completion.usage?.prompt_tokens || 0) + (completion.usage?.completion_tokens || 0);
+      const promptTokens = completion.usage?.prompt_tokens || 0;
+      const completionTokens = completion.usage?.completion_tokens || 0;
 
-      return { content, provider: provider.name, tokensUsed };
+      const responsePayload = {
+        content,
+        provider: provider.name,
+        model: provider.model,
+        tokensUsed: promptTokens + completionTokens,
+        promptTokens,
+        completionTokens,
+        durationMs: Date.now() - startTime,
+      };
+      cleanupMutex();
+      return responsePayload;
     } catch (err: any) {
-      console.warn(`[LLM] ${provider.name} failed: ${err.message}. Trying next...`);
+      const elapsed = Date.now() - startTime;
+      console.warn(`[LLM] ${provider.name} failed (${elapsed}ms): ${err.message}. Trying next...`);
+
+      // If local vLLM is down, mark it unavailable for this session
+      // so we don't waste time retrying on every call
+      if (err.message.includes('ECONNREFUSED')) {
+        provider.available = false;
+        console.warn(`[LLM] Flagged provider ${provider.name} as offline indefinitely.`);
+      }
     }
   }
 
-  throw new Error('[LLM] All providers failed. No LLM available.');
+  cleanupMutex();
+  return null;
 }
 
+/**
+ * Request structured JSON output from the LLM.
+ * Parses the response and returns the object, or null on failure.
+ */
+export async function jsonCompletion<T = any>(
+  messages: OpenAI.Chat.ChatCompletionMessageParam[],
+  options?: Omit<LLMRequestOptions, 'jsonMode'>
+): Promise<{ data: T; meta: Omit<LLMResponse, 'content'> } | null> {
+  const response = await chatCompletion(messages, { ...options, jsonMode: true });
+  if (!response) return null;
+
+  try {
+    const data = JSON.parse(response.content) as T;
+    const { content, ...meta } = response;
+    return { data, meta };
+  } catch (parseErr: any) {
+    console.error(`[LLM] JSON parse failed from ${response.provider}: ${parseErr.message}`);
+    // Try to extract JSON from markdown code blocks
+    const jsonMatch = response.content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      try {
+        const data = JSON.parse(jsonMatch[1].trim()) as T;
+        const { content, ...meta } = response;
+        return { data, meta };
+      } catch {
+        // give up
+      }
+    }
+    return null;
+  }
+}
+
+// --- Utility ---
+
+function isConnectionError(err: any): boolean {
+  const msg = (err.message || '').toLowerCase();
+  return (
+    msg.includes('econnrefused') ||
+    msg.includes('econnreset') ||
+    msg.includes('etimedout') ||
+    msg.includes('fetch failed') ||
+    msg.includes('network') ||
+    err.code === 'ECONNREFUSED' ||
+    err.code === 'ECONNRESET' ||
+    err.code === 'ETIMEDOUT'
+  );
+}
+
+/**
+ * Get list of currently available providers.
+ */
 export function getAvailableProviders(): string[] {
-  return providers.map((p) => `${p.name} (${p.role})`);
+  return providers.filter((p) => p.available).map((p) => p.name);
+}
+
+/**
+ * Check if any LLM provider is available.
+ * If false, the system should mark investigations as stalled.
+ */
+export function hasAvailableProvider(): boolean {
+  return providers.some((p) => p.available);
+}
+
+/**
+ * Re-enable local provider (e.g., after vLLM comes back online).
+ */
+export function reenableLocalProvider(): void {
+  const local = providers.find((p) => p.name === 'local');
+  if (local) {
+    local.available = true;
+    console.log('[LLM] Local vLLM re-enabled.');
+  }
 }
